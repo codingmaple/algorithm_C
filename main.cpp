@@ -164,7 +164,7 @@ DWORD WINAPI threadJs(LPVOID lvParamter)
 DWORD WINAPI threadModbusInput(LPVOID lvParamter)
 {
 	modbus_t *ctx = NULL;
-	ctx = modbus_new_rtu("COM3", 115200, 'N', 8, 1);
+	ctx = modbus_new_rtu("COM4", 115200, 'N', 8, 1);
 	if (ctx == NULL) {
 		fprintf(stderr, "Unable to allocate libmodbus context\n");
 		return -1;
@@ -232,20 +232,21 @@ DWORD WINAPI threadModbusInput(LPVOID lvParamter)
 			bits = (uint8_t*)malloc(bitCount*sizeof(uint8_t));
 			int i = 0;
 			for(auto bit : statusBits){
-				bits[i++] = (uint8_t)bit;
+//				bits[i++] = (uint8_t)bit;
 //				json reg_json;
 //				settings[setting] >> reg_json;
-//				int addr = bit["addr"];
-//				int value = bit["value"];
+				int addr = bit["addr"];
+				int value = bit["value"];
+                rc = modbus_write_bit(ctx, addr, value);
 			}
-			rc = modbus_write_bits(ctx, 0, bitCount, bits);
+
 			statusBit_en = false;
 		}
 		ReleaseMutex(statusBitMutex); //释放互斥锁
 
-		json modbus_reg_json[40];
-		rc = modbus_read_registers(ctx, 0, 40, tab_rp_registers);
-		for(int i = 0; i < 40 ; i++){
+		json modbus_reg_json[52];
+		rc = modbus_read_registers(ctx, 0, 52, tab_rp_registers);
+		for(int i = 0; i < 52 ; i++){
 			modbus_reg_json[i]["addr"] = i;
 			modbus_reg_json[i]["value"] = (int)(tab_rp_registers[i]);
 		}
@@ -301,6 +302,7 @@ DWORD WINAPI threadModbusOutput(LPVOID lvParamter)
 		Sleep(10);
 	}
 }
+
 
 int modbus_master(){
 	modbus_t *ctx = NULL;
@@ -416,7 +418,7 @@ int modbus_slave() {
 	int header_length;
 	modbus_mapping_t *mb_mapping;
 
-	ctx = modbus_new_rtu("COM1", 115200, 'N', 8, 1);
+	ctx = modbus_new_rtu("COM5", 115200, 'N', 8, 1);
 	modbus_set_slave(ctx, 1);
 	query = (uint8_t *)malloc(MODBUS_RTU_MAX_ADU_LENGTH);
 	header_length = modbus_get_header_length(ctx);
