@@ -69,7 +69,8 @@ int main() {
 	CloseHandle(hThread2); //关闭句柄
 	CloseHandle(hThread3); //关闭句柄
 	CloseHandle(hThread4); //关闭句柄
-	while (1){}
+//	system("pause");
+	while (true){}
 	return 0;
 
 //	std::cout << "Hello, World!" << std::endl;
@@ -167,6 +168,7 @@ DWORD WINAPI threadModbusInput(LPVOID lvParamter)
 	ctx = modbus_new_rtu("COM4", 115200, 'N', 8, 1);
 	if (ctx == NULL) {
 		fprintf(stderr, "Unable to allocate libmodbus context\n");
+//		system("pause");
 		return -1;
 	}
 	modbus_set_debug(ctx, FALSE);
@@ -187,6 +189,7 @@ DWORD WINAPI threadModbusInput(LPVOID lvParamter)
 	if (modbus_connect(ctx) == -1) {
 		fprintf(stderr, "Connection failed: %s\n", modbus_strerror(errno));
 		modbus_free(ctx);
+//		system("pause");
 		return -1;
 	}
 	modbus_get_response_timeout(ctx, &new_response_to_sec, &new_response_to_usec);
@@ -194,7 +197,7 @@ DWORD WINAPI threadModbusInput(LPVOID lvParamter)
 	int rc;
 	uint8_t *tab_rp_bits = NULL;
 	uint16_t *tab_rp_registers = NULL;
-	int nb_points = 40;
+	int nb_points = 52;
 
 //	nb_points = (UT_BITS_NB > UT_INPUT_BITS_NB) ? UT_BITS_NB : UT_INPUT_BITS_NB;
 	tab_rp_bits = (uint8_t *) malloc(nb_points * sizeof(uint8_t));
@@ -258,7 +261,7 @@ DWORD WINAPI threadModbusInput(LPVOID lvParamter)
 
 		json mv_json[20];
 		rc = modbus_read_registers(ctx, 400, 20, tab_rp_registers);
-		for(int i = 0; i < 40 ; i++){
+		for(int i = 0; i < 20 ; i++){
 			mv_json[i]["addr"] = i+400;
 			mv_json[i]["value"] = (int)(tab_rp_registers[i]);
 		}
