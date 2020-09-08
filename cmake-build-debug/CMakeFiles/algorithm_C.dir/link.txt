@@ -1,3 +1,0 @@
-"D:\SoftWare\CLion 2020.2\bin\cmake\win\bin\cmake.exe" -E rm -f CMakeFiles\algorithm_C.dir/objects.a
-C:\ProgramSoftWare\mingw64\bin\ar.exe cr CMakeFiles\algorithm_C.dir/objects.a @CMakeFiles\algorithm_C.dir\objects1.rsp
-C:\ProgramSoftWare\mingw64\bin\g++.exe -g  -static-libgcc -static-libstdc++ -Wl,--whole-archive CMakeFiles\algorithm_C.dir/objects.a -Wl,--no-whole-archive  -o algorithm_C.exe -Wl,--out-implib,libalgorithm_C.dll.a -Wl,--major-image-version,0,--minor-image-version,0 @CMakeFiles\algorithm_C.dir\linklibs.rsp
