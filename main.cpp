@@ -85,7 +85,7 @@ DWORD WINAPI threadHw(LPVOID lvParamter)
 			while (TRUE){
 				for(int i = 0; i < 20; i++){
 					((SendDataToHW)(hwData[i], 0, 3));//Send channel A data
-					((SendDataToHW)(0, 0, 4));//Send channel B data as 0
+//					((SendDataToHW)(0, 0, 4));//Send channel B data as 0
 				}
 
 				if(hwStart && (!testing)){
@@ -96,9 +96,7 @@ DWORD WINAPI threadHw(LPVOID lvParamter)
 					((SendDataToHW)(1, 0, 2));//Stop channel A
 					testing = false;
 				}
-
-				Sleep(50);//工作站主程序每接收到一个数据就默认地认为过了50ms。可以在HWFrequence.txt中来重新定义这种默认值。
-
+				Sleep(1000);//工作站主程序每接收到一个数据就默认地认为过了50ms。可以在HWFrequence.txt中来重新定义这种默认值。
 			}
 		}
 		FreeLibrary(hinstLib);
@@ -157,7 +155,7 @@ DWORD WINAPI threadJs(LPVOID lvParamter)
 DWORD WINAPI threadModbusInput(LPVOID lvParamter)
 {
 	modbus_t *ctx = NULL;
-	ctx = modbus_new_rtu("COM1", 115200, 'N', 8, 1);
+	ctx = modbus_new_rtu("COM3", 115200, 'N', 8, 1);
 	if (ctx == NULL) {
 		fprintf(stderr, "Unable to allocate libmodbus context\n");
 		return -1;
