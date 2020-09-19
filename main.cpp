@@ -2,12 +2,12 @@
 #include <windef.h>
 #include <afxres.h>
 #include <unistd.h>
-#include <Windows.h>
 #include "libmodbus/modbus.h"
 #include "libmodbus/unit-test.h"
 #include "inc/json.hpp"
 #include "inc/json_fwd.hpp"
 #include "string"
+#include <ctime>
 
 using json = nlohmann::json;
 using namespace std;
@@ -83,9 +83,9 @@ DWORD WINAPI threadHw(LPVOID lvParamter)
 		if (SendDataToHW != NULL) {
 			int testing = false;
 			while (TRUE){
-				for(int i = 0; i < 20; i++){
+				for(int i = 0; i < 1; i++){
 					((SendDataToHW)(hwData[i], 0, 3));//Send channel A data
-//					((SendDataToHW)(0, 0, 4));//Send channel B data as 0
+					((SendDataToHW)(0, 0, 4));//Send channel B data as 0
 				}
 
 				if(hwStart && (!testing)){
@@ -96,7 +96,7 @@ DWORD WINAPI threadHw(LPVOID lvParamter)
 					((SendDataToHW)(1, 0, 2));//Stop channel A
 					testing = false;
 				}
-				Sleep(1000);//工作站主程序每接收到一个数据就默认地认为过了50ms。可以在HWFrequence.txt中来重新定义这种默认值。
+				Sleep(200);//工作站主程序每接收到一个数据就默认地认为过了50ms。可以在HWFrequence.txt中来重新定义这种默认值。
 			}
 		}
 		FreeLibrary(hinstLib);
@@ -155,10 +155,10 @@ DWORD WINAPI threadJs(LPVOID lvParamter)
 DWORD WINAPI threadModbusInput(LPVOID lvParamter)
 {
 	modbus_t *ctx = NULL;
-	ctx = modbus_new_rtu("COM3", 115200, 'N', 8, 1);
+	ctx = modbus_new_rtu("COM4", 115200, 'N', 8, 1);
 	if (ctx == NULL) {
-		fprintf(stderr, "Unable to allocate libmodbus context\n");
-		return -1;
+        fprintf(stderr, "Unable to allocate libmodbus context\n");
+        return -1;
 	}
 	modbus_set_debug(ctx, FALSE);
 	modbus_set_error_recovery(ctx,
@@ -257,26 +257,30 @@ DWORD WINAPI threadModbusInput(LPVOID lvParamter)
 		modbus_json["read_coils"] = read_coils;
 
 		json mv_json[20];
-		rc = modbus_read_registers(ctx, 400, 20, tab_rp_registers);
-		for(int i = 0; i < 20 ; i++){
-			mv_json[i]["addr"] = i+400;
-			mv_json[i]["value"] = (int)(tab_rp_registers[i]);
+		rc = modbus_read_registers(ctx, 400, 40, tab_rp_registers);
+		int count = 0;
+		for(int i = 0; i < 40 ; i+=2, ++count){
+			mv_json[count]["addr"] = count+400;
+//			mv_json[i]["value"] = (int)(tab_rp_registers[i]);
+            int value = 0;
+			short high = (short)(tab_rp_registers[i]);
+			short low = (short)(tab_rp_registers[i+1]);
+			value |= (high & 0x0000ffff);
+			value = (value << 16) | (low & 0x0000ffff);
+            mv_json[count]["value"] = value;
 		}
-
 		modbus_json["modbus_mv"] = mv_json;
-
-
 		WaitForSingleObject(hMutex, INFINITE); //互斥锁
 		for (int i = 0; i < 20; ++i) {
 			hwData[i] = (int)(tab_rp_registers[i]);
 		}
-
-
-//		json hwDataJson;
-//		hwDataJson["hw_data"] = hwData;
-		cout << modbus_json << endl;
-		ReleaseMutex(hMutex); //释放互斥锁
-		Sleep(1000);
+        DWORD t_start, t_end;
+        t_start = GetTickCount();
+        cout << modbus_json << endl;
+        ReleaseMutex(hMutex); //释放互斥锁
+        Sleep(200);
+        t_end=GetTickCount();
+        cout<<t_end-t_start<<endl;
 	}
 
 	close:
