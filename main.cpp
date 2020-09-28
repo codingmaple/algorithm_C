@@ -41,7 +41,7 @@ bool hwStart = false;
 bool settings_en = false;
 bool statusBit_en = false;
 json settings_json;
-int hwData[20];
+long hwData[20];
 int mV = 0;
 
 
@@ -55,7 +55,12 @@ uint32_t new_response_to_usec;
 int rc;
 uint8_t *tab_rp_bits = NULL;
 uint16_t *tab_rp_registers = NULL;
+uint16_t *tab_mv_registers = NULL;
+
+
 int nb_points = 52;
+int mv_points = 40;
+int rp_points = 5;
 
 PROC1 SendDataToHW;
 HINSTANCE hinstLib;
@@ -78,6 +83,13 @@ int main() {
 
 
     modbus_get_response_timeout(ctx, &old_response_to_sec, &old_response_to_usec);
+
+    tab_mv_registers = (uint16_t *) malloc(mv_points * sizeof(uint16_t));
+
+    tab_rp_registers = (uint16_t *) malloc(nb_points * sizeof(uint16_t));
+
+    tab_rp_bits = (uint8_t *) malloc(rp_points * sizeof(uint8_t));
+
 
     if (modbus_connect(ctx) == -1) {
         fprintf(stderr, "Connection failed: %s\n", modbus_strerror(errno));
@@ -106,6 +118,9 @@ int main() {
         CloseHandle(handle1);
         CloseHandle(handle2);
         CloseHandle(handle3);
+        free(tab_mv_registers);
+        free(tab_rp_registers);
+        free(tab_rp_bits);
         if (hinstLib != NULL){
             FreeLibrary(hinstLib);
         }
@@ -151,7 +166,7 @@ DWORD  WINAPI mytimerproc3(LPVOID args){
     BOOL bRet = FALSE;
     MSG msg = { 0 };
 
-    UINT timerId3 = SetTimer(NULL, 0, 200, (TIMERPROC) threadModbusInput);
+    UINT timerId3 = SetTimer(NULL, 0, 1000, (TIMERPROC) threadModbusInput);
     while ((bRet = GetMessage(&msg, NULL, 0, 0)) != 0 ){
         if (bRet == -1){
 
@@ -168,24 +183,41 @@ DWORD  WINAPI mytimerproc3(LPVOID args){
 
 void CALLBACK threadModbusInput (HWND hwnd, UINT message, UINT idTimer, DWORD dwTime) {
 
-    tab_rp_bits = (uint8_t *) malloc(nb_points * sizeof(uint8_t));
-    memset(tab_rp_bits, 0, nb_points * sizeof(uint8_t));
-    tab_rp_registers = (uint16_t *) malloc(nb_points * sizeof(uint16_t));
+    memset(tab_rp_bits, 0, rp_points * sizeof(uint8_t));
+
     memset(tab_rp_registers, 0, nb_points * sizeof(uint16_t));
 
-    json modbus_reg_json[52];
-    rc = modbus_read_registers(ctx, 0, 52, tab_rp_registers);
-    for (int i = 0; i < 52; i++) {
-        modbus_reg_json[i]["addr"] = i;
-        modbus_reg_json[i]["value"] = (int) (tab_rp_registers[i]);
-    }
+    memset(tab_mv_registers, 0, mv_points * sizeof(uint16_t));
 
     json modbus_json;
 
+    json modbus_reg_json[52];
+    rc = modbus_read_registers(ctx, 0, nb_points, tab_rp_registers);
+    for (int i = 0; i < nb_points; i++) {
+        modbus_reg_json[i]["addr"] = i;
+        modbus_reg_json[i]["value"] = (int)(tab_rp_registers[i]);
+    }
     modbus_json["modbus_data"] = modbus_reg_json;
 
+    json mv_json[20];
+    rc = modbus_read_registers(ctx, 400, mv_points, tab_mv_registers);
+    int count = 0;
+    for (int i = 0; i < mv_points; i += 2, ++count) {
+        mv_json[count]["addr"] = 400 + count;
+        int value = 0;
+        short high = (short) (tab_mv_registers[i]);
+        short low = (short) (tab_mv_registers[i + 1]);
+        value |= (high & 0x0000ffff);
+        value = (value << 16) | (low & 0x0000ffff);
+        mv_json[count]["value"] = (value / 1000.000);
+    }
+    for(int i = 0; i < 20; i++){
+        hwData[i] = mv_json[i]["value"];
+    }
+    modbus_json["modbus_mv"] = mv_json;
+
     json read_coils[5];
-    rc = modbus_read_input_bits(ctx, 0, 5, tab_rp_bits);
+    rc = modbus_read_input_bits(ctx, 0, rp_points, tab_rp_bits);
     for (int i = 0; i < 5; i++) {
         read_coils[i]["addr"] = i;
         read_coils[i]["value"] = (int) (tab_rp_bits[i]);
@@ -193,22 +225,7 @@ void CALLBACK threadModbusInput (HWND hwnd, UINT message, UINT idTimer, DWORD dw
 
     modbus_json["read_coils"] = read_coils;
 
-    json mv_json[20];
-    rc = modbus_read_registers(ctx, 400, 40, tab_rp_registers);
-    int count = 0;
-    for (int i = 0; i < 40; i += 2, ++count) {
-        mv_json[count]["addr"] = count + 400;
-        int value = 0;
-        short high = (short) (tab_rp_registers[i]);
-        short low = (short) (tab_rp_registers[i + 1]);
-        value |= (high & 0x0000ffff);
-        value = (value << 16) | (low & 0x0000ffff);
-        mv_json[count]["value"] = value;
-    }
-    modbus_json["modbus_mv"] = mv_json;
-    for (int i = 0; i < 20; ++i) {
-        hwData[i] = (int) (tab_rp_registers[i]);
-    }
+
     cout << modbus_json << endl;
 }
 
@@ -216,19 +233,16 @@ void CALLBACK threadModbusInput (HWND hwnd, UINT message, UINT idTimer, DWORD dw
 void CALLBACK threadHw (HWND hwnd, UINT message, UINT idTimer, DWORD dwTime)
 {
     if (SendDataToHW != NULL) {
-        int testing = false;
-        for(int i = 0; i < 1; i++){
+        for(int i = 0; i < 20; i++){
             ((SendDataToHW)(hwData[i], 0, 3));//Send channel A data
             ((SendDataToHW)(0, 0, 4));//Send channel B data as 0
         }
 
         if(hwStart){
             ((SendDataToHW)(1, 0, 1));//Start channel A
-            testing = true;
         }
-        if((!hwStart) && testing){
+        if((!hwStart)){
             ((SendDataToHW)(1, 0, 2));//Stop channel A
-            testing = false;
         }
     }
 }
@@ -239,9 +253,9 @@ void CALLBACK threadJs (HWND hwnd, UINT message, UINT idTimer, DWORD dwTime){
     cin >> settings_json;
     if(settings_json.count("cmd")){
         auto cmdStr = settings_json["cmd"];
-        if(cmdStr=="start_testing"){
+        if(cmdStr=="start_testing" || cmdStr == "start_sepu"){
             hwStart = true;
-        } else if(cmdStr=="stop_testing"){
+        } else if(cmdStr=="stop_testing" || cmdStr == "stop_sepu"){
             hwStart = false;
         } else if(cmdStr=="power_off"){
 
