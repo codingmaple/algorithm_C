@@ -133,7 +133,7 @@ int main() {
 DWORD  WINAPI mytimerproc1(LPVOID args){
     BOOL bRet = FALSE;
     MSG msg = { 0 };
-    UINT timerId3 = SetTimer(NULL, 0, 200, (TIMERPROC) threadHw);
+    UINT timerId3 = SetTimer(NULL, 0, 1000, (TIMERPROC) threadHw);
     while ((bRet = GetMessage(&msg, NULL, 0, 0)) != 0 ){
         if (bRet == -1){
 
@@ -253,7 +253,7 @@ void CALLBACK threadJs (HWND hwnd, UINT message, UINT idTimer, DWORD dwTime){
     cin >> settings_json;
     if(settings_json.count("cmd")){
         auto cmdStr = settings_json["cmd"];
-        if(cmdStr=="start_testing" || cmdStr == "start_sepu"){
+        if(cmdStr == "start_sepu"){
             hwStart = true;
         } else if(cmdStr=="stop_testing" || cmdStr == "stop_sepu"){
             hwStart = false;
