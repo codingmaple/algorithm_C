@@ -212,7 +212,8 @@ void CALLBACK threadModbusInput (HWND hwnd, UINT message, UINT idTimer, DWORD dw
         mv_json[count]["value"] = (value / 1000.000);
     }
     for(int i = 0; i < 20; i++){
-        hwData[i] = mv_json[i]["value"];
+        double value = mv_json[i]["value"];
+        hwData[i] = (long) (value * 1000);
     }
     modbus_json["modbus_mv"] = mv_json;
 
